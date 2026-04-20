@@ -161,6 +161,57 @@ app.MapPost("/tools/generate-scenarios", (
     });
 });
 
+app.MapPost("/tools/judge-failures", (
+    IServiceProvider serviceProvider,
+    IConfiguration config,
+    ILogger<Program> logger) =>
+{
+    logger.LogInformation("Received POST /tools/judge-failures. Starting Task.Run...");
+
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            string target = Environment.GetEnvironmentVariable("JUDGING_TARGET")
+                ?? throw new InvalidOperationException("JUDGING_TARGET env var is required.");
+
+            var endpoint = config["AZURE_OPENAI_ENDPOINT"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+            var apiKey = config["AZURE_OPENAI_KEY"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
+
+            var opts = new OpenAIClientOptions { Endpoint = new Uri(endpoint!) };
+            var baseClient = new OpenAIClient(new System.ClientModel.ApiKeyCredential(apiKey!), opts);
+
+            var allModels = new[] { "Mistral-Large-3", "DeepSeek-V3.1", "gpt-4o" };
+            var judges = allModels.Where(m => m != target).ToArray();
+
+            if (judges.Length < 2)
+                throw new InvalidOperationException($"Could not find 2 judges for target '{target}'.");
+
+            using var scope = serviceProvider.CreateScope();
+            var sql = scope.ServiceProvider.GetRequiredService<SqlService>();
+            var judgeLogger = scope.ServiceProvider.GetRequiredService<ILogger<Judger>>();
+
+            var judger = new Judger(
+                sql, judgeLogger,
+                baseClient.GetChatClient(judges[0]), judges[0],
+                baseClient.GetChatClient(judges[1]), judges[1],
+                target
+            );
+
+            await judger.RunJudgingLoop();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "A critical error occurred within the judging background thread.");
+        }
+    });
+
+    return Results.Accepted(value: new
+    {
+        Message = "Judging of failed scenarios has started in the background, follow the progress in the server's console."
+    });
+});
+
 app.MapGet("/", async context =>
 {
     context.Response.ContentType = "text/html";
