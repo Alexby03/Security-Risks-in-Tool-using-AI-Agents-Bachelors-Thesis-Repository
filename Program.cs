@@ -162,7 +162,7 @@ app.MapPost("/tools/generate-scenarios", (
 });
 
 app.MapPost("/tools/judge-failures", (
-    IServiceProvider serviceProvider,
+    IServiceScopeFactory scopeFactory,
     IConfiguration config,
     ILogger<Program> logger) =>
 {
@@ -187,7 +187,7 @@ app.MapPost("/tools/judge-failures", (
             if (judges.Length < 2)
                 throw new InvalidOperationException($"Could not find 2 judges for target '{target}'.");
 
-            using var scope = serviceProvider.CreateScope();
+            using var scope = scopeFactory.CreateScope();
             var sql = scope.ServiceProvider.GetRequiredService<SqlService>();
             var judgeLogger = scope.ServiceProvider.GetRequiredService<ILogger<Judger>>();
 
