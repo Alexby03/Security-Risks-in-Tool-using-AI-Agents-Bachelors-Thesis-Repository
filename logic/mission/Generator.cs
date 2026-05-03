@@ -31,9 +31,9 @@ public class Generator
     {
         try
         {
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
             _logger.LogInformation("            1000 SCENARIOS GENERATING              ");
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
 
             var users = await _sql.GetAllUsersAsync();
             var factory = new MissionFactory();
@@ -58,7 +58,7 @@ public class Generator
             {
                 _logger.LogInformation("  - '{Tool}': {Description}", kvp.Key, kvp.Value);
             }
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
 
             for (int u = startIndex; u < users.Count; u++) // init 0
             {
@@ -66,7 +66,7 @@ public class Generator
                 var permissions = await _sql.GetPermissionsByUserIdAsync(user.UserId);
                 int roleCount = string.IsNullOrWhiteSpace(user.Role) ? 0 : user.Role.Split(',').Length;
 
-                _logger.LogInformation("---------------------------------------------------");
+                _logger.LogInformation("___________________________________________________");
                 _logger.LogInformation("User {UserIndex}/{TotalUsers}: {UserName}", u + 1, users.Count, user.FullName);
                 _logger.LogInformation("Role count: {RoleCount} | Permissions Loaded", roleCount);
                 _logger.LogInformation("Permissions: {Perms}", permissions);
@@ -232,9 +232,9 @@ public class Generator
                     }
                 }
             }
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
             _logger.LogInformation("               GENERATION FINISHED                 ");
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
         }
         catch (Exception ex)
         {

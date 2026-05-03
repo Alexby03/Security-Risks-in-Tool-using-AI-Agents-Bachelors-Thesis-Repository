@@ -24,43 +24,6 @@ public class SqlService
         return conn;
     }
 
-    public async Task<string> ExecuteSqlQueryAsync(string sql)
-    {
-        await using var conn = await ConnectAsync();
-        await using var command = new MySqlCommand(sql, conn);
-
-        try
-        {
-            await using var reader = await command.ExecuteReaderAsync();
-
-            if (reader.HasRows)
-            {
-                var results = new List<Dictionary<string, object?>>();
-                int rowCount = 0;
-
-                while (await reader.ReadAsync() && rowCount < 10)
-                {
-                    var row = new Dictionary<string, object?>();
-                    for (var i = 0; i < reader.FieldCount; i++)
-                    {
-                        row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                    }
-                    results.Add(row);
-                    rowCount++;
-                }
-
-                return $"Results ({results.Count} rows): {System.Text.Json.JsonSerializer.Serialize(results)}";
-            }
-
-            int affected = reader.RecordsAffected;
-            return $"Affected {affected} rows (non-SELECT)";
-        }
-        catch (Exception ex)
-        {
-            return $"DB ERROR: {ex.Message}";
-        }
-    }
-
     public async Task<string> InsertGeneratedScenarioAsync(
         string userId, 
         string category, 
@@ -134,50 +97,6 @@ public class SqlService
             
             _logger.LogError(ex, "     [CRITICAL] Unexpected error in database method for UserId: {UserId}, Category: {Category}", userId, category);
             return $"DB FATAL: {ex.Message}";
-        }
-    }
-
-    public async Task<string> GetPermissionsByFullNameAsync(string fullName)
-    {
-        await using var conn = await ConnectAsync();
-        
-        bool isBool = Environment.GetEnvironmentVariable("PERMISSIONS_AS_BOOL") == "true";
-
-        string columnName = isBool ? "PermissionName" : "PermissionText";
-
-        string sql = $@"
-            SELECT DISTINCT p.{columnName}
-            FROM users u
-            INNER JOIN userroles ur ON u.UserId = ur.UserId
-            INNER JOIN rolepermissions rp ON ur.RoleId = rp.RoleId
-            INNER JOIN permissions p ON rp.PermissionId = p.PermissionId
-            WHERE u.FullName = @FullName;";
-
-        await using var cmd = new MySqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@FullName", fullName);
-
-        try
-        {
-            await using var reader = await cmd.ExecuteReaderAsync();
-            
-            var permissions = new List<string>();
-            while (await reader.ReadAsync())
-            {
-                if (!reader.IsDBNull(0))
-                {
-                    permissions.Add(reader.GetString(0));
-                }
-            }
-
-            if (permissions.Count == 0)
-                return string.Empty;
-
-            return string.Join(", ", permissions);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "DB ERROR in GetPermissionsByFullNameAsync för {User}", fullName);
-            return string.Empty;
         }
     }
 
@@ -283,8 +202,8 @@ public class SqlService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"DB ERROR in GetAllUsersAsync: {ex.Message}");
-            throw; 
+            _logger.LogError(ex, "DB ERROR in GetAllUsersAsync");
+            throw;
         }
 
         return users;

@@ -30,10 +30,10 @@ public class Judger
 
     public async Task RunJudgingLoop()
     {
-        _logger.LogInformation("===================================================");
+        _logger.LogInformation("___________________________________________________");
         _logger.LogInformation("         JUDGING LOOP: {Agent} UNDER TEST          ", _testedAgent);
         _logger.LogInformation("         Judge 1: {J1} | Judge 2: {J2}             ", _judge1Name, _judge2Name);
-        _logger.LogInformation("===================================================");
+        _logger.LogInformation("___________________________________________________");
 
         var failures = await _sql.GetFailedScenariosAsync(_testedAgent);
         _logger.LogInformation("Fetched {Count} failed scenarios for {Agent}.", failures.Count, _testedAgent);
@@ -78,7 +78,7 @@ public class Judger
 
             if (i > 0) await Task.Delay(500);
 
-            _logger.LogInformation("---------------------------------------------------");
+            _logger.LogInformation("____________________________________________________");
             _logger.LogInformation("Judging {Idx}/{Total}: SessionId={Sid}", i + 1, failures.Count, f.SessionId);
 
             string prompt = BuildJudgePrompt(f);
@@ -128,9 +128,9 @@ public class Judger
             }
         }
 
-        _logger.LogInformation("===================================================");
+        _logger.LogInformation("___________________________________________________");
         _logger.LogInformation("               JUDGING FINISHED                    ");
-        _logger.LogInformation("===================================================");
+        _logger.LogInformation("___________________________________________________");
     }
 
     private string BuildJudgeSystemPrompt()

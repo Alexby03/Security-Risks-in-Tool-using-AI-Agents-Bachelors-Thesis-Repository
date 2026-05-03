@@ -36,7 +36,7 @@ I projektet används en serie SQL-skript för att aggregera rådata från databa
 
 Följande miljövariabler krävs för att köra systemets olika delar:
 
-*   **DefaultConnection**: Den primära anslutningssträngen för SQL-databasen.
+*   **ConnectionStrings__Database**: Den primära anslutningssträngen för SQL-databasen.
 *   **AZURE_OPENAI_ENDPOINT**: URL:en till den Azure OpenAI-resurs som används för API-anrop.
 *   **DEPLOYMENT_NAME**: Namnet på den specifika modell-deployment som ska utvärderas eller användas för generering (t.ex. "gpt-4o").
 *   **AZURE_OPENAI_KEY**: API-nyckeln för att autentisera anrop mot Azure OpenAI-tjänsten.

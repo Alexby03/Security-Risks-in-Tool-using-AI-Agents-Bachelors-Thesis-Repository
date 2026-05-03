@@ -32,9 +32,9 @@ public class Tester
     {
         try
         {
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
             _logger.LogInformation("              TESTING LOOP STARTING                ");
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
 
             string agentType = Environment.GetEnvironmentVariable("DEPLOYMENT_NAME") ?? "unknown";
             _logger.LogInformation("Agent type (DEPLOYMENT_NAME): {AgentType}", agentType);
@@ -129,7 +129,7 @@ public class Tester
 
                 if (processed > 1)
                     await Task.Delay(500);
-                _logger.LogInformation("---------------------------------------------------");
+                _logger.LogInformation("___________________________________________________");
                 _logger.LogInformation("Scenario {Processed}/{Total}: SessionId={SessionId}, UserId={UserId}",
                     processed, scenarios.Count, scenario.ScenarioId, scenario.UserId);
 
@@ -227,9 +227,9 @@ public class Tester
                 }
             }
 
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
             _logger.LogInformation("               TESTING FINISHED                    ");
-            _logger.LogInformation("===================================================");
+            _logger.LogInformation("___________________________________________________");
         }
         catch (Exception ex)
         {
