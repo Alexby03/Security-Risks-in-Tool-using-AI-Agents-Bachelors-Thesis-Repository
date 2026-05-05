@@ -21,10 +21,11 @@ Inom ramen för vårt examensarbete används tre huvudsakliga tjänster för att
 *   **Funktion:** Domar-agenten analyserar de interna resonemangsloggarna för att identifiera den bakomliggande orsaken till felet.
 *   **Klassificering:** Den kategoriserar felen i specifika sårbarhetsklasser såsom *Confused Deputy*, *Policy Misinterpretation*, *Tool Hallucination* och *Benevolence Bias*. Detta möjliggör en djupare analys av *varför* en agent valde att ignorera en säkerhetspolicy.
 
-## SQL-skript för Analys
+## SQL-skript
 
 I projektet används en serie SQL-skript för att aggregera rådata från databasen till de slutgiltiga resultaten:
 
+*   **tables.sql**: Skript som skapar samtliga tabeller som användes i studiens metod.
 *   **attacksuccessrate.sql**: Beräknar ASR genom att mäta hur ofta en agent genomförde ett otillåtet verktygsanrop i förhållande till det totala antalet fientliga eller tvetydiga prompts.
 *   **toolcallerrorrate.sql**: Beräknar TCER genom att analysera förhållandet mellan felaktiga (inklusive hallucinerade) verktygsanrop och det totala antalet anrop agenten gjorde.
 *   **taskcompletionrate.sql**: Mäter TCR genom att identifiera de testfall där agentens anropade verktyg exakt överensstämde med rättningsmallens förväntade anrop.
