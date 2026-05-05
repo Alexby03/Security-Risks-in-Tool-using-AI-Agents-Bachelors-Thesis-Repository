@@ -1,7 +1,7 @@
-using System.Collections.Concurrent;
 using OpenAI;
 using OpenAI.Chat;
 using localdotnet.Services;
+using System.ClientModel.Primitives;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,18 +68,42 @@ app.MapPost("/tools/generate-scenarios", (
 });
 
 app.MapPost("/tools/test-scenarios", (
-    IServiceProvider serviceProvider,
+    IServiceScopeFactory scopeFactory,
     IConfiguration config,
     ILogger<Program> logger) =>
 {
-    logger.LogInformation("Received POST /tools/test-scenarios. Starting Task.Run...");
+    logger.LogInformation("Received POST /tools/test-scenarios. Starting Task.Run with DeepSeek patch...");
 
     _ = Task.Run(async () =>
     {
         try
         {
-            using var scope = serviceProvider.CreateScope();
-            var tester = scope.ServiceProvider.GetRequiredService<Tester>();
+            string target = Environment.GetEnvironmentVariable("TESTING_TARGET") 
+                ?? "DeepSeek-V3.1";
+
+            var endpoint = config["AZURE_OPENAI_ENDPOINT"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+            var apiKey = config["AZURE_OPENAI_KEY"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
+
+            var opts = new OpenAIClientOptions { Endpoint = new Uri(endpoint!) };
+            
+            opts.Transport = new HttpClientPipelineTransport(new HttpClient(new DeepSeekWorkaroundHandler 
+            { 
+                InnerHandler = new HttpClientHandler() 
+            }));
+
+            var baseClient = new OpenAIClient(new System.ClientModel.ApiKeyCredential(apiKey!), opts);
+
+            using var scope = scopeFactory.CreateScope();
+            var sql = scope.ServiceProvider.GetRequiredService<SqlService>();
+            var testerLogger = scope.ServiceProvider.GetRequiredService<ILogger<Tester>>();
+
+            var tester = new Tester(
+                baseClient.GetChatClient(target), 
+                sql, 
+                testerLogger, 
+                config
+            );
+
             await tester.RunTestingLoop();
         }
         catch (Exception ex)
@@ -90,7 +114,7 @@ app.MapPost("/tools/test-scenarios", (
 
     return Results.Accepted(value: new
     {
-        Message = "Testing of scenarios has started in the background, follow the progress in the server console."
+        Message = "Testing of scenarios has started in the background with DeepSeek patch. Follow progress in console."
     });
 });
 
@@ -112,6 +136,12 @@ app.MapPost("/tools/judge-failures", (
             var apiKey = config["AZURE_OPENAI_KEY"] ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
 
             var opts = new OpenAIClientOptions { Endpoint = new Uri(endpoint!) };
+
+            opts.Transport = new HttpClientPipelineTransport(new HttpClient(new DeepSeekWorkaroundHandler 
+            { 
+                InnerHandler = new HttpClientHandler() 
+            }));
+
             var baseClient = new OpenAIClient(new System.ClientModel.ApiKeyCredential(apiKey!), opts);
 
             var allModels = new[] { "Mistral-Large-3", "DeepSeek-V3.1", "gpt-4o" };
@@ -146,3 +176,22 @@ app.MapPost("/tools/judge-failures", (
 });
 
 app.Run();
+
+// DeepSeek incompatibility with OpenAI SDK fix
+public class DeepSeekWorkaroundHandler : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        var response = await base.SendAsync(request, ct);
+        if (response.Content != null)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            if (content.Contains("\"finish_reason\":\"tool_call\""))
+            {
+                content = content.Replace("\"finish_reason\":\"tool_call\"", "\"finish_reason\":\"tool_calls\"");
+                response.Content = new StringContent(content, System.Text.Encoding.UTF8, "application/json");
+            }
+        }
+        return response;
+    }
+}

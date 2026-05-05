@@ -27,7 +27,7 @@ public class SqlService
     public async Task<string> InsertGeneratedScenarioAsync(
         string userId, 
         string category, 
-        AgentToolResponse data, 
+        AgentToolResponseFull data,
         string counterparty) 
     {
         string sql = @"
@@ -75,19 +75,19 @@ public class SqlService
         {
             try { await transaction.RollbackAsync(); } catch { }
 
-            if (sqlEx.Number == 1062) // 1062 = Duplicate entry for key
+            if (sqlEx.Number == 1062) // Duplicate entry
             {
                 _logger.LogWarning("     [DB WARNING] Duplicate entry discovered for UserId: {UserId}, Category: {Category}. Row skipped.", userId, category);
                 return $"DB WARNING: Duplicate entry. {sqlEx.Message}";
             }
-            else if (sqlEx.Number == 1213) // 1213 = Deadlock found when trying to get lock
+            else if (sqlEx.Number == 1213) // Deadlock
             {
                 _logger.LogError("     [DB ERROR] Deadlock in database for UserId: {UserId}. Another query is blocking.", userId);
                 return $"DB ERROR: Deadlock. {sqlEx.Message}";
             }
             else
             {
-                _logger.LogError(sqlEx, "     [DB ERROR] MySQL error {ErrorNumber} during insertion. UserId: {UserId}. Data: {@Data}", sqlEx.Number, userId, data);
+                _logger.LogError(sqlEx, "     [DB ERROR] MySQL error {ErrorNumber} during insertion. UserId: {UserId}.", sqlEx.Number, userId);
                 return $"DB ERROR: {sqlEx.Message}";
             }
         }
@@ -99,7 +99,7 @@ public class SqlService
             return $"DB FATAL: {ex.Message}";
         }
     }
-
+    
     public async Task<string> GetPermissionsByUserIdAsync(string userId)
     {
         await using var conn = await ConnectAsync();
