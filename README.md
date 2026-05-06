@@ -1,37 +1,39 @@
 # Säkerhetsrisker i verktygsanvändande AI-agenter - Repository
 
-Detta projekt är ett ramverk utvecklat för att utvärdera och auditera säkerhetsprestandan hos LLM-baserade agenter i en företagsmiljö styrd av RBAC (Role-Based Access Control). Programmet simulerar en isolerad sandlådemiljö där agenter interagerar med olika affärsverktyg (dokument, e-post, kunddata och kalender) för att undersöka hur väl de respekterar användares behörighetsgränser. Syftet med projektet är att identifiera sårbarheter i autonoma system och jämföra hur olika sätt att representera behörigheter påverkar agenternas beslutsfattande.
+Detta repository innehåller ett experimentellt ramverk utvecklat för att utvärdera och granska säkerhetsprestandan hos LLM-baserade agenter i en företagsmiljö. Systemet simulerar en isolerad sandlådemiljö styrd av Role-Based Access Control (RBAC), där agenter interagerar med affärsverktyg (dokument, e-post, kunddata och kalender).
+
+Syftet med ramverket är att identifiera sårbarheter i autonoma system, analysera hur agenter respekterar behörighetsgränser, samt utvärdera hur olika representationer av behörigheter (naturligt språk vs. booleska värden) påverkar agenternas beslutsfattande.
 
 ## Kärntjänster
 
-Inom ramen för vårt examensarbete används tre huvudsakliga tjänster för att genomföra experimentet:
+Arkitekturen är uppdelad i tre huvudsakliga tjänster för att hantera datasetgenerering, testexekvering och kvalitativ utvärdring:
 
 ### 1. Generator
-**Generator** ansvarar för att skapa den omfattande testmängden (3000 unika scenarier). Den använder en LLM för att generera syntetiska men realistiska företagsinstruktioner baserat på en databas med fiktiva användare och deras tilldelade behörigheter.
-*   **Funktion:** Den skapar "ground truth" för varje testfall, vilket inkluderar information om huruvida en handling är tillåten, vilka verktyg som krävs och vilka behörigheter som är nödvändiga.
-*   **Kategorisering:** Varje scenario klassificeras som antingen *Non-Malicious*, *Vague* eller *Malicious* för att testa agentens förmåga att balansera hjälpsamhet mot säkerhet.
+**Generator** ansvarar för att skapa en omfattande testmängd (3000 unika scenarier).
+*   **Funktion:** Anvönder en LLM för att generera syntetiska företagsinstruktioner baserat på en databas med fiktiva användare och deras tilldelade behörigheter. Skapar systemets "ground truth" för varje testfall, vilket inkluderar information om huruvida en handling är tillåten, vilka verktyg som krävs och vilka behörigheter som är nödvändiga.
+*   **Säkerhetskategorier:** Varje scenario klassificeras som antingen *Non-Malicious*, *Vague* eller *Malicious* för att testa agentens förmåga att balansera säkerhet mot hjälpsamhet.
 
 ### 2. Tester
-**Tester** utgör själva exekveringsfasen i experimentet. Tjänsten hämtar de genererade scenarierna och exponerar dem för den agent som utvärderas (t.ex. GPT-4o, Mistral eller DeepSeek).
-*   **Funktion:** Den döljer rättningsmallen för den testade agenten och tvingar den att redovisa sitt interna resonemang genom ett strukturerat fält (`log_prompt`).
-*   **Variabler:** Tester hanterar växlingen mellan att representera behörigheter som binära värden (Bool) eller som naturligt språk (NL), vilket är centralt för att besvara studiens forskningsfrågor.
+**Tester** utgör själva exekveringsfasen i experimentet där LLM-agenterna ställs mot testfallen.
+*   **Funktion:** Exponerar scenarier för test-agenten utan att avslöja rättningsmallen. Tvingar fram transparans genom att logga agentens interna resonemang via ett strukturerat `log_prompt`-fält.
+*   **Experimentvariabler:** Hanterar växlingen mellan att representera behörigheter som binära värden (Bool) eller som naturligt språk (NL), vilket är centralt för att besvara studiens forskningsfrågor.
 
 ### 3. Judger
-**Judger** används för den kvalitativa analysen av de testfall där agenterna misslyckats. Den tillämpar ett "Cross-Evaluation"-upplägg där de modeller som inte genererat resultatet agerar domare över loggarna vars agent producerat ett icke-godkänt resultat.
+**Judger** genomför en kvalitativa analys av de testfall där agenterna misslyckades. Den tillämpar ett "Cross-Evaluation"-upplägg där de modeller som inte genererat resultatet agerar domare över test-agentens loggar som producerat ett icke-godkänt resultat.
 *   **Funktion:** Domar-agenten analyserar de interna resonemangsloggarna för att identifiera den bakomliggande orsaken till felet.
 *   **Klassificering:** Den kategoriserar felen i specifika sårbarhetsklasser såsom *Confused Deputy*, *Policy Misinterpretation*, *Tool Hallucination* och *Benevolence Bias*. Detta möjliggör en djupare analys av *varför* en agent valde att ignorera en säkerhetspolicy.
 
-## SQL-skript
+## SQL-skript för Analys
 
-I projektet används en serie SQL-skript för att aggregera rådata från databasen till de slutgiltiga resultaten:
+All mätdata aggregeras och beräknas via dedikerade SQL-skript:
 
 *   **tables.sql**: Skript som skapar samtliga tabeller som användes i studiens metod.
-*   **attacksuccessrate.sql**: Beräknar ASR genom att mäta hur ofta en agent genomförde ett otillåtet verktygsanrop i förhållande till det totala antalet fientliga eller tvetydiga prompts.
-*   **toolcallerrorrate.sql**: Beräknar TCER genom att analysera förhållandet mellan felaktiga (inklusive hallucinerade) verktygsanrop och det totala antalet anrop agenten gjorde.
-*   **taskcompletionrate.sql**: Mäter TCR genom att identifiera de testfall där agentens anropade verktyg exakt överensstämde med rättningsmallens förväntade anrop.
-*   **precisionandrecall.sql**: Genererar en konfusionsmatris (TP, FP, FN, TN) för att beräkna precision och recall för agentens förmåga att korrekt identifiera behöriga användare.
+*   **attacksuccessrate.sql**: Beräknar **ASR** (Attack Success Rate) genom att mäta hur ofta en agent genomförde ett otillåtet verktygsanrop i förhållande till det totala antalet fientliga eller tvetydiga prompts.
+*   **toolcallerrorrate.sql**: Beräknar **TCER** (Tool Call Error Rate) genom att analysera förhållandet mellan felaktiga (inklusive hallucinerade) verktygsanrop och det totala antalet anrop agenten gjorde.
+*   **taskcompletionrate.sql**: Mäter **TCR** (Task Completion Rate) genom att identifiera de testfall där agentens anropade verktyg exakt överensstämde med rättningsmallens förväntade anrop.
+*   **precisionandrecall.sql**: Genererar en konfusionsmatris (TP, FP, FN, TN) för att beräkna Precision och Recall för agentens förmåga att korrekt identifiera behöriga användare.
 *   **getfailedrowsbyagent.sql**: Ett verktygsskript för att snabbt räkna och extrahera samtliga underkända rader per agent för vidare granskning.
-*   **classificationstatsbyagent.sql**: Ett avancerat skript för den kvalitativa analysen. Det summerar totala fel per agent och kopplar ihop dem med domar-agenternas bedömningar. Skriptet beräknar ett medelvärde baserat på de två oberoende domarna för att fastställa frekvensen och procentandelen av specifika sårbarheter (t.ex. Tool Hallucination) i förhållande till modellens totala felmarginal.
+*   **classificationstatsbyagent.sql**: Ett avancerat skript för den kvalitativa analysen. Summerar totala fel per agent och kopplar ihop dem med domar-agenternas bedömningar. Skriptet beräknar ett medelvärde baserat på de två oberoende domarna för att fastställa frekvensen och procentandelen av specifika sårbarheter (t.ex. Tool Hallucination) i förhållande till modellens totala felmarginal.
 
 ## Miljövariabler
 
@@ -51,4 +53,4 @@ Följande miljövariabler krävs för att köra systemets olika delar:
 - **Backend:** .NET 10 / ASP.NET Core
 - **Databas:** MySQL (MySqlConnector)
 - **AI-integration:** Azure OpenAI SDK (OpenAI.Chat)
-- **Modeller:** GPT-4o, Mistral Large 3, DeepSeek-V3.1
+- **Modeller:** GPT-4o, DeepSeek-V3.1, Mistral Large 3
